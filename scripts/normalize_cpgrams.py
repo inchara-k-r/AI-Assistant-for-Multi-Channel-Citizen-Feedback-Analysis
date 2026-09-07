@@ -1,7 +1,7 @@
 import json
 import re
 from pathlib import Path
-
+import csv
 import pandas as pd
 
 
@@ -12,12 +12,12 @@ import pandas as pd
 INPUT_JSON = Path(r"C:\Users\tejas\Downloads\no_pii_grievance.json")
 
 MAPPING_FILE = Path(
-    r"C:\Users\tejas\AI-Assistant-for-Multi-Channel-Citizen-Feedback-Analysis"
+    r"C:\Users\tejas\OneDrive\learning\civic_voice\AI-Assistant-for-Multi-Channel-Citizen-Feedback-Analysis-1"
     r"\datasets\raw\cpgrams\CategoryCode_Mapping.xlsx"
 )
 
 OUTPUT_FILE = Path(
-    r"C:\Users\tejas\AI-Assistant-for-Multi-Channel-Citizen-Feedback-Analysis"
+    r"C:\Users\tejas\OneDrive\learning\civic_voice\AI-Assistant-for-Multi-Channel-Citizen-Feedback-Analysis-1"
     r"\datasets\processed\cpgrams_clean.csv"
 )
 
@@ -45,6 +45,23 @@ def clean_text(value):
 
     return text
 
+def normalize_category_code(value):
+    """Normalize category codes so numeric formats like 11578.0 become 11578."""
+
+    if pd.isna(value):
+        return ""
+
+    value = str(value).strip()
+
+    if not value:
+        return ""
+
+    # Convert values like 11578.0 -> 11578
+    if re.fullmatch(r"\d+\.0+", value):
+        return value.split(".")[0]
+
+    return value
+
 
 # ============================================================
 # LOAD CATEGORY MAPPING
@@ -62,10 +79,8 @@ print("Mapping columns:", list(mapping.columns))
 
 
 # Convert codes to strings so they can be matched reliably
-mapping["Code"] = (
-    mapping["Code"]
-    .astype(str)
-    .str.strip()
+mapping["Code"] = mapping["Code"].apply(
+    normalize_category_code
 )
 
 # Keep only useful mapping columns
@@ -149,9 +164,7 @@ processed["district"] = (
 
 processed["category_code"] = (
     df["CategoryV7"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
+    .apply(normalize_category_code)
 )
 
 processed["organization"] = (
@@ -232,6 +245,42 @@ processed = processed.drop(
     columns=["organization_mapped"]
 )
 
+# ============================================================
+# CATEGORY MAPPING DIAGNOSTICS
+# ============================================================
+
+print("\n========================================")
+print("CATEGORY MAPPING DIAGNOSTICS")
+print("========================================")
+
+empty_category_codes = (
+    processed["category_code"].eq("").sum()
+)
+
+unmapped_nonempty = (
+    processed["category"].isna()
+    & processed["category_code"].ne("")
+).sum()
+
+mapped = processed["category"].notna().sum()
+
+print("Total records:", len(processed))
+print("Mapped:", mapped)
+print("Empty category codes:", empty_category_codes)
+print("Non-empty but unmapped:", unmapped_nonempty)
+
+print("\nTop unmapped category codes:")
+
+print(
+    processed.loc[
+        processed["category"].isna()
+        & processed["category_code"].ne(""),
+        "category_code"
+    ]
+    .value_counts()
+    .head(30)
+)
+
 
 # ============================================================
 # LANGUAGE
@@ -277,7 +326,9 @@ OUTPUT_FILE.parent.mkdir(
 processed.to_csv(
     OUTPUT_FILE,
     index=False,
-    encoding="utf-8-sig"
+    
+    quoting=csv.QUOTE_MINIMAL,
+    escapechar="\\"
 )
 
 
@@ -320,3 +371,30 @@ print(
 )
 
 print("\nDone.")
+
+print("\nMapping CategoryV7 values...")
+
+print("\nSample CPGRAMS category codes:")
+print(processed["category_code"].head(20).to_list())
+
+print("\nSample mapping category codes:")
+print(mapping["category_code"].head(20).to_list())
+
+print("\nCPGRAMS category_code dtype:")
+print(processed["category_code"].dtype)
+
+print("\nMapping category_code dtype:")
+print(mapping["category_code"].dtype)
+
+processed = processed.merge(
+    mapping[
+        [
+            "category_code",
+            "category",
+            "organization"
+        ]
+    ],
+    on="category_code",
+    how="left",
+    suffixes=("", "_mapped")
+)
