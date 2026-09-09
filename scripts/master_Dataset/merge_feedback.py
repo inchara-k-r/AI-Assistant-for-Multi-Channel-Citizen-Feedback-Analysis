@@ -86,17 +86,11 @@ def normalize_email():
     file = PROCESSED_DIR / "email_clean.csv"
     df = pd.read_csv(file, dtype=str)
 
-    clean = pd.DataFrame({
-        "feedback_id": df["feedback_id"],
-        "source": df["source"],
-        "timestamp": df["timestamp"],
-        "text": df["text"],
-        "organization": df["service"],
-        "loc": df["city"],
-        "urgency": "",
-    })
+    clean = df[MASTER_COLUMNS].copy()
 
     return clean
+
+    
 
 
 def normalize_survey():
@@ -183,9 +177,11 @@ def main():
 
     # Convert timestamps
     master["timestamp"] = pd.to_datetime(
-        master["timestamp"],
-        errors="coerce"
-    )
+    master["timestamp"],
+    errors="coerce",
+    utc=True,
+    format="mixed"
+)
 
 
     # --------------------------------------------------------

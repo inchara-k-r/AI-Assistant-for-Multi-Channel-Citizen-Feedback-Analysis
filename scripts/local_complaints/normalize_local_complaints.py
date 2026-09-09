@@ -15,6 +15,17 @@ OUTPUT_FILE = Path(
 def normalize_dataset():
     # Read raw dataset
     df = pd.read_csv(INPUT_FILE)
+    
+
+    print(f"Raw records: {len(df):,}")
+
+# Remove exact duplicate rows
+    before_duplicates = len(df)
+    df = df.drop_duplicates()
+    duplicates_removed = before_duplicates - len(df)
+ 
+    print(f"Exact duplicate rows removed: {duplicates_removed:,}")
+    print(f"Records after duplicate removal: {len(df):,}")
 
     # Create normalized dataset
     clean_df = pd.DataFrame({

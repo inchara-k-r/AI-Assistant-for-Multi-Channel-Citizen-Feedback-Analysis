@@ -142,8 +142,12 @@ processed["source"] = "CPGRAMS"
 # Prefer received date because it represents when the grievance
 # entered the system.
 processed["timestamp"] = pd.to_datetime(
-    df["recvd_date"],
-    errors="coerce"
+    df["recvd_date"].apply(
+        lambda x: x.get("$date") if isinstance(x, dict) else x
+    ),
+    errors="coerce",
+    utc=True,
+    format="mixed"
 )
 
 processed["text"] = df["subject_content_text"].apply(clean_text)
