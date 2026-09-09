@@ -19,7 +19,7 @@ if not os.path.exists(MASTER_FILE):
     print(f"\nERROR: File not found: {MASTER_FILE}")
     exit()
 
-df = pd.read_csv(MASTER_FILE)
+df = pd.read_csv(MASTER_FILE, low_memory=False)
 
 print("\n1. DATASET OVERVIEW")
 print("-" * 60)
